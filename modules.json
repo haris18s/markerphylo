@@ -5,14 +5,54 @@
         "https://github.com/nf-core/modules.git": {
             "modules": {
                 "nf-core": {
-                    "fastqc": {
+                    "checkm2/predict": {
                         "branch": "master",
-                        "git_sha": "6d46786420b4d7bc88eba026eb389c0c5535d120",
+                        "git_sha": "deb8254027c27a9e505befc68ab449db1f3dadef",
+                        "installed_by": ["modules"]
+                    },
+                    "clipkit": {
+                        "branch": "master",
+                        "git_sha": "7b3452a23773f687ededb4befd037920e5a51341",
+                        "installed_by": ["modules"]
+                    },
+                    "gunzip": {
+                        "branch": "master",
+                        "git_sha": "0902eac3012baaf4f9ab6513c8c55acc9353c96c",
+                        "installed_by": ["modules"]
+                    },
+                    "hmmer/hmmsearch": {
+                        "branch": "master",
+                        "git_sha": "1a6a3077be2cd5cf337a78573f242f984055a9af",
+                        "installed_by": ["modules"]
+                    },
+                    "iqtree": {
+                        "branch": "master",
+                        "git_sha": "7b3452a23773f687ededb4befd037920e5a51341",
+                        "installed_by": ["modules"]
+                    },
+                    "mafft/align": {
+                        "branch": "master",
+                        "git_sha": "e3307865b7a10f4bc458189a494a05c0ca9da52e",
                         "installed_by": ["modules"]
                     },
                     "multiqc": {
                         "branch": "master",
                         "git_sha": "98403d15b0e50edae1f3fec5eae5e24982f1fade",
+                        "installed_by": ["modules"]
+                    },
+                    "ncbigenomedownload": {
+                        "branch": "master",
+                        "git_sha": "46cee3233c7c56524e3c32a52cec089316e09ee5",
+                        "installed_by": ["modules"]
+                    },
+                    "pyrodigal": {
+                        "branch": "master",
+                        "git_sha": "0ca6ca6c6e068635d01f979d0aed2f59c5d7cec4",
+                        "installed_by": ["modules"]
+                    },
+                    "seqkit/concat": {
+                        "branch": "master",
+                        "git_sha": "7b3452a23773f687ededb4befd037920e5a51341",
                         "installed_by": ["modules"]
                     }
                 }

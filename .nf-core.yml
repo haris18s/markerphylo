@@ -29,9 +29,9 @@ lint:
 template:
   org: haris18s
   name: MarkerPhylo
-  description: 'Reproducible marker-based phylogenomic pipeline: from genome accessions
+  description: "Reproducible marker-based phylogenomic pipeline: from genome accessions
     or assemblies to a species tree, with QC, marker identification, alignment and
-    tree inference.'
+    tree inference."
   author: haris18s
   version: 1.0.0dev
   force: true

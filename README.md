@@ -1,86 +1,115 @@
 # haris18s/markerphylo
 
-[![Open in GitHub Codespaces](https://img.shields.io/badge/Open_In_GitHub_Codespaces-black?labelColor=grey&logo=github)](https://github.com/codespaces/new/haris18s/markerphylo)
-[![GitHub Actions CI Status](https://github.com/haris18s/markerphylo/actions/workflows/nf-test.yml/badge.svg)](https://github.com/haris18s/markerphylo/actions/workflows/nf-test.yml)
-[![GitHub Actions Linting Status](https://github.com/haris18s/markerphylo/actions/workflows/linting.yml/badge.svg)](https://github.com/haris18s/markerphylo/actions/workflows/linting.yml)[![Cite with Zenodo](http://img.shields.io/badge/DOI-10.5281/zenodo.XXXXXXX-1073c8?labelColor=000000)](https://doi.org/10.5281/zenodo.XXXXXXX)
-[![nf-test](https://img.shields.io/badge/unit_tests-nf--test-337ab7.svg)](https://www.nf-test.com)
 
 [![Nextflow](https://img.shields.io/badge/version-%E2%89%A525.10.4-green?style=flat&logo=nextflow&logoColor=white&color=%230DC09D&link=https%3A%2F%2Fnextflow.io)](https://www.nextflow.io/)
 [![nf-core template version](https://img.shields.io/badge/nf--core_template-4.1.0-green?style=flat&logo=nfcore&logoColor=white&color=%2324B064&link=https%3A%2F%2Fnf-co.re)](https://github.com/nf-core/tools/releases/tag/4.1.0)
 [![run with conda](http://img.shields.io/badge/run%20with-conda-3EB049?labelColor=000000&logo=anaconda)](https://docs.conda.io/en/latest/)
 [![run with docker](https://img.shields.io/badge/run%20with-docker-0db7ed?labelColor=000000&logo=docker)](https://www.docker.com/)
 [![run with singularity](https://img.shields.io/badge/run%20with-singularity-1d355c.svg?labelColor=000000)](https://sylabs.io/docs/)
-[![Launch on Seqera Platform](https://img.shields.io/badge/Launch%20%F0%9F%9A%80-Seqera%20Platform-%234256e7)](https://cloud.seqera.io/launch?pipeline=https://github.com/haris18s/markerphylo)
+
+> [!NOTE]
+> **Status: work in progress.** The core workflow from genomes to a concatenated marker alignment is implemented. Species tree inference is being integrated; tests and the extensions listed below are planned.
 
 ## Introduction
 
-**haris18s/markerphylo** is a bioinformatics pipeline that ...
+**haris18s/markerphylo** is a Nextflow pipeline for **marker-based phylogenomics of bacterial genomes**. It takes NCBI assembly accessions and/or local genome assemblies (isolates or MAGs), identifies conserved single-copy marker genes in each genome, aligns and trims each marker across all genomes, and concatenates them into a supermatrix for species tree inference.
 
-<!-- TODO nf-core:
-   Complete this sentence with a 2-3 sentence summary of what types of data the pipeline ingests, a brief overview of the
-   major pipeline sections and the types of output it produces. You're giving an overview to someone new
-   to nf-core here, in 15-20 seconds. For an example, see https://github.com/nf-core/rnaseq/blob/master/README.md#introduction
--->
+The approach follows established marker-based phylogenomic workflows (e.g. [GToTree](https://github.com/AstrobioMike/GToTree), [PhyloPhlAn](https://github.com/biobakery/phylophlan), and the methods in [Hugoson et al. 2022](https://doi.org/10.1093/molbev/msac037)), implemented as a modular Nextflow pipeline built on the nf-core template. Each step runs in its own container, scales across genomes on HPC, can be resumed, and is designed to be extended with gene-content and horizontal gene transfer (HGT) analyses.
 
-<!-- TODO nf-core: Include a figure that guides the user through the major workflow steps. Many nf-core
-     workflows use the "tube map" design for that. See https://nf-co.re/docs/community/brand/workflow-schematics#examples for examples.   -->
-<!-- TODO nf-core: Fill in short bullet-pointed list of the default steps in the pipeline -->1. Read QC ([`FastQC`](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/))2. Present QC for raw reads ([`MultiQC`](http://multiqc.info/))
+## Pipeline Overview
 
-## Usage
-
-> [!NOTE]
-> If you are new to Nextflow and nf-core, please refer to [this page](https://nf-co.re/docs/get_started/environment_setup/overview) on how to set-up Nextflow. Make sure to [test your setup](https://nf-co.re/docs/get_started/run-your-first-pipeline) with `-profile test` before running the workflow on actual data.
-
-<!-- TODO nf-core: Describe the minimum required steps to execute the pipeline, e.g. how to prepare samplesheets.
-     Explain what rows and columns represent. For instance (please edit as appropriate):
-
-First, prepare a samplesheet with your input data that looks as follows:
-
-`samplesheet.csv`:
-
-```csv
-sample,fastq_1,fastq_2
-CONTROL_REP1,AEG588A1_S1_L002_R1_001.fastq.gz,AEG588A1_S1_L002_R2_001.fastq.gz
+```mermaid
+flowchart LR
+    A[Samplesheet] --> B[NCBI download / local FASTA]
+    B --> C[CheckM2 genome QC]
+    C --> D[Pyrodigal gene calling]
+    D --> E[HMMER marker search]
+    E --> F[Select markers per genome]
+    F --> G[Merge per marker]
+    G --> H[MAFFT alignment]
+    H --> I[ClipKIT trimming]
+    I --> J[SeqKit concatenation]
+    J -.-> K[IQ-TREE species tree]
 ```
 
-Each row represents a fastq file (single-end) or a pair of fastq files (paired end).
+1. **Input:** genomes from NCBI accessions ([`ncbi-genome-download`](https://github.com/kblin/ncbi-genome-download)) and/or local assembly FASTA files
+2. **Genome QC:** completeness and contamination estimates ([`CheckM2`](https://github.com/chklovski/CheckM2)); can be skipped with `--skip_qc`
+3. **Gene calling:** protein prediction ([`Pyrodigal`](https://github.com/althonos/pyrodigal))
+4. **Marker search:** single-copy marker genes with profile HMMs ([`HMMER`](http://hmmer.org/) `hmmsearch`, using curated Pfam gathering thresholds `--cut_ga`)
+5. **Marker selection** (custom script): one protein per marker and genome. Markers with multiple hits are excluded by default (possible paralogs or contamination), or the best-scoring hit is kept with `--best_hit`
+6. **Merge:** regroup sequences into one FASTA per marker across all genomes
+7. **Alignment:** per-marker alignment with [`MAFFT`](https://mafft.cbrc.jp/alignment/software/) (L-INS-i)
+8. **Trimming:** [`ClipKIT`](https://github.com/JLSteenwyk/ClipKIT)
+9. **Concatenation:** supermatrix of all markers ([`SeqKit`](https://bioinf.shenwei.me/seqkit/) `concat`), with missing markers filled as gaps
+10. **Species tree:** maximum-likelihood tree with [`IQ-TREE`](http://www.iqtree.org/) (ModelFinder, ultrafast bootstrap) *(being integrated)*
 
--->
+### Samplesheet
 
-Now, you can run the pipeline using:
+Each row is one genome, given **either** as an NCBI assembly accession **or** as a local assembly FASTA:
 
-<!-- TODO nf-core: update the following command to include all required parameters for a minimal example -->
+```csv
+sample,accession,fasta
+L_pneumophila,GCF_000008485.1,
+L_longbeachae,,/path/to/L_longbeachae.fna
+```
+
+- `sample`: unique name without spaces; used as the label in alignments and the tree
+- `accession`: NCBI assembly accession (`GCF_...` or `GCA_...`)
+- `fasta`: path to an assembled genome (`.fa`, `.fasta`, `.fna`, optionally `.gz`)
+
+The pipeline starts from **assembled** genomes. For raw reads, assemble first, e.g. with [nf-core/bacass](https://nf-co.re/bacass) (isolates) or [nf-core/mag](https://nf-co.re/mag) (metagenomes).
+
+### Reference data
+
+- **Marker set (`--markers_hmm`):** a profile HMM file of single-copy marker genes, e.g. the [GToTree SCG sets](https://github.com/AstrobioMike/GToTree/wiki/SCG-sets) (`Gammaproteobacteria.hmm`, `Proteobacteria.hmm`, `Bacteria.hmm`). Choose a set that covers all genomes in the dataset, including outgroups.
+- **CheckM2 database (`--checkm2_db`):** the CheckM2 DIAMOND database (`.dmnd`), downloaded once with `checkm2 database --download`. Not needed with `--skip_qc`.
+
+### Running the pipeline
+
+Parameters can be provided in a file, e.g. `params.yaml`:
+
+```yaml
+input: samplesheet.csv
+outdir: results
+markers_hmm: /path/to/Gammaproteobacteria.hmm
+checkm2_db: /path/to/CheckM2_database/uniref100.KO.1.dmnd
+```
 
 ```bash
 nextflow run haris18s/markerphylo \
-   -profile <docker/singularity/.../institute> \
-   --input samplesheet.csv \
-   --outdir <OUTDIR>
+   -params-file params.yaml \
+   -profile docker
 ```
 
-> [!WARNING]
-> Please provide pipeline parameters via the CLI or Nextflow `-params-file` option. Custom config files including those provided by the `-c` Nextflow option can be used to provide any configuration _**except for parameters**_; see [docs](https://nf-co.re/docs/running/run-pipelines#using-parameter-files).
+Use `-profile singularity` or `-profile conda` as alternatives to Docker, and add `-resume` to continue a previous run.
+
+| Parameter | Description | Default |
+|---|---|---|
+| `--input` | Samplesheet (CSV) | required |
+| `--outdir` | Output directory | required |
+| `--markers_hmm` | Marker profile HMM file | required |
+| `--checkm2_db` | CheckM2 database | required unless `--skip_qc` |
+| `--skip_qc` | Skip CheckM2 genome QC | `false` |
+| `--best_hit` | Keep the best-scoring hit for multi-copy markers instead of excluding them | `false` |
+
+## Planned extensions
+
+- **Species tree output and visualisation**, with partitioned models per marker
+- **Gene-tree QC and discordance report:** per-marker gene trees compared with the species tree, flagging markers with discordant histories as candidates for paralogy or HGT
+- **Genome filtering** by fraction of markers recovered
+- **Gene content evolution:** gene family clustering and gain/loss reconstruction along the species tree
+- **HGT screening:** candidate detection against databases including eukaryotes and Asgard archaea, confirmed with gene trees
+- **Tests** with nf-test and continuous integration
 
 ## Credits
 
-haris18s/markerphylo was originally written by haris18s.
-
-We thank the following people for their extensive assistance in the development of this pipeline:
-
-<!-- TODO nf-core: If applicable, make list of people who have also contributed -->
-
-## Contributions and Support
-
-If you would like to contribute to this pipeline, please see the [contributing guidelines](docs/CONTRIBUTING.md).
+haris18s/markerphylo was written by Haris Spyridis ([@haris18s](https://github.com/haris18s)).
 
 ## Citations
 
-<!-- TODO nf-core: Add citation for pipeline after first release. Uncomment lines below and update Zenodo doi and badge at the top of this file. -->
-<!-- If you use haris18s/markerphylo for your analysis, please cite it using the following doi: [10.5281/zenodo.XXXXXX](https://doi.org/10.5281/zenodo.XXXXXX) -->
+This pipeline builds on the tools listed above; please cite them if you use it. Marker sets are from GToTree:
 
-<!-- TODO nf-core: Add bibliography of tools and data used in your pipeline -->
-
-An extensive list of references for the tools used by the pipeline can be found in the [`CITATIONS.md`](CITATIONS.md) file.
+> Lee MD. GToTree: a user-friendly workflow for phylogenomics. *Bioinformatics* 35, 4162–4164 (2019).
 
 This pipeline uses code and infrastructure developed and maintained by the [nf-core](https://nf-co.re) community, reused here under the [MIT license](https://github.com/nf-core/tools/blob/main/LICENSE).
 

@@ -13,21 +13,23 @@
                 "errorMessage": "Sample name must be provided and cannot contain spaces",
                 "meta": ["id"]
             },
-            "fastq_1": {
+            "accession": {
                 "type": "string",
-                "format": "file-path",
-                "exists": true,
-                "pattern": "^([\\S\\s]*\\/)?[^\\s\\/]+\\.f(ast)?q\\.gz$",
-                "errorMessage": "FastQ file for reads 1 must be provided, cannot contain spaces and must have extension '.fq.gz' or '.fastq.gz'"
+                "pattern": "^GC[AF]_\\d{9}\\.\\d+$",
+                "errorMessage": "Accession must be an NCBI assembly accession, e.g. GCF_000008485.1"
             },
-            "fastq_2": {
+            "fasta": {
                 "type": "string",
                 "format": "file-path",
                 "exists": true,
-                "pattern": "^([\\S\\s]*\\/)?[^\\s\\/]+\\.f(ast)?q\\.gz$",
-                "errorMessage": "FastQ file for reads 2 cannot contain spaces and must have extension '.fq.gz' or '.fastq.gz'"
+                "pattern": "^\\S+\\.(fa|fasta|fna)(\\.gz)?$",
+                "errorMessage": "FASTA file must exist, cannot contain spaces and must end in .fa, .fasta or .fna (optionally .gz)"
             }
         },
-        "required": ["sample", "fastq_1"]
+        "required": ["sample"],
+        "oneOf": [
+            {"required": ["accession"] },
+            {"required": ["fasta"] }
+        ]
     }
 }
